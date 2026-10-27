@@ -1,0 +1,2 @@
+Se ordenaron 15,000 registros por el campo [id_estacion] usando el método [Counting Sort] en [12476236] nanosegundos. Comparaciones: [29998], Asignaciones/Movimientos de Memoria: [30000]
+Se ordenaron 15,000 registros por el campo [id_estacion] usando el método [Counting Sort] en [12533034] nanosegundos. Comparaciones: [29998], Asignaciones/Movimientos de Memoria: [30000]

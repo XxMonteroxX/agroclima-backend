@@ -1,0 +1,2 @@
+Se realizó la búsqueda en 15,000 registros por el campo [id_estacion] usando el método de búsqueda [Búsqueda Binaria] en [22353] nanosegundos. Comparaciones: [17]
+Se realizó la búsqueda en 15,000 registros por el campo [id_estacion] usando el método de búsqueda [Búsqueda Lineal] en [1085351] nanosegundos. Comparaciones: [1698]

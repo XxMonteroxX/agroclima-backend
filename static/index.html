@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistema de Monitoreo Agroclimático</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style type="text/tailwindcss">
+  .card{@apply rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg shadow-black/30}
+  .btn{@apply rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-40}
+  .term{@apply rounded-lg border border-slate-800 bg-slate-950 p-4 font-mono text-sm leading-relaxed text-emerald-300}
+  .tab{@apply rounded-md px-3 py-1.5 text-sm text-slate-400 hover:text-slate-100}
+  .tab.on{@apply bg-slate-800 text-emerald-400}
+  .inp{@apply w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none disabled:opacity-60}
+</style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-200 antialiased">
+<div class="mx-auto max-w-6xl space-y-6 px-4 py-8">
+
+<!-- A. Encabezado -->
+<header class="card space-y-4">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-bold text-emerald-400 sm:text-2xl">SISTEMA DE MONITOREO AGROCLIMÁTICO DE CULTIVOS DE MAÍZ Y AGUACATE</h1>
+      <p class="mt-1 text-sm text-slate-400">Sector Primario Agroalimentario y Meteorológico de México | Evaluación de Rendimiento en RAM</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="conn" class="inline-flex items-center gap-2 rounded-full border border-slate-700 px-3 py-1 text-xs font-mono text-slate-400"><span class="h-2 w-2 rounded-full bg-slate-500"></span>Verificando</span>
+      <button id="btnHist" class="btn border border-slate-700 text-slate-200 hover:bg-slate-800">Ver historial</button>
+    </div>
+  </div>
+  <div class="grid gap-3 sm:grid-cols-3">
+    <div class="rounded-lg bg-slate-950 p-3"><div class="text-xs text-slate-500">Registros en RAM</div><div id="sumReg" class="font-mono text-lg text-amber-400">0 / 15,000</div></div>
+    <div class="rounded-lg bg-slate-950 p-3"><div class="text-xs text-slate-500">Estado del ordenamiento</div><div id="sumOrd" class="font-mono text-lg text-sky-400">No ordenado</div></div>
+    <div class="rounded-lg bg-slate-950 p-3"><div class="text-xs text-slate-500">Método Alfa actual</div><div id="sumAlfa" class="font-mono text-lg text-emerald-400">Sin ejecuciones</div></div>
+  </div>
+</header>
+
+<!-- B. Fase 1 -->
+<section class="card space-y-4">
+  <h2 class="text-lg font-semibold text-slate-100">Fase 1: Infraestructura y carga de datos</h2>
+  <button id="btn11" class="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400">1.1 Cargar 15,000 Registros a RAM</button>
+  <div id="out1" class="term">Esperando la carga de datos.</div>
+  <div>
+    <div class="mb-2 flex gap-1">
+      <button class="tab on" data-tab="p">Primeros 30 registros</button>
+      <button class="tab" data-tab="u">Últimos 30 registros</button>
+    </div>
+    <div class="overflow-x-auto rounded-lg border border-slate-800">
+      <table class="w-full whitespace-nowrap text-left font-mono text-xs">
+        <thead id="thM" class="bg-slate-950 text-slate-400"></thead>
+        <tbody id="tbM"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- C. Fase 2 -->
+<section class="card space-y-4">
+  <h2 class="text-lg font-semibold text-slate-100">Fase 2: Disparador aleatorio de ordenación</h2>
+  <button id="btn21" class="btn bg-sky-500 text-slate-950 hover:bg-sky-400" disabled title="Primero carga los registros en la Fase 1">2.1 Activar Disparador Aleatorio de Ordenación</button>
+  <div id="sel2" class="hidden rounded-lg border border-sky-500/40 bg-sky-500/10 p-4 font-mono text-sm text-sky-200"></div>
+  <div id="out2" class="term hidden"></div>
+  <div id="badges2" class="grid hidden gap-3 sm:grid-cols-4"></div>
+  <div>
+    <h3 class="mb-2 text-sm font-semibold text-slate-300">Método Alfa: ejecuciones acumuladas por algoritmo</h3>
+    <div id="alfa" class="space-y-2 text-sm text-slate-500">Aún no hay ejecuciones.</div>
+  </div>
+</section>
+
+<!-- D. Fase 3 -->
+<section class="card space-y-4">
+  <h2 class="text-lg font-semibold text-slate-100">Fase 3: Disparador aleatorio de búsqueda</h2>
+  <button id="btn31" class="btn bg-amber-400 text-slate-950 hover:bg-amber-300" disabled title="Primero carga los registros en la Fase 1">3.1 Activar Disparador Aleatorio de Búsqueda</button>
+  <div id="mod3" class="hidden space-y-3"></div>
+  <div id="res3" class="hidden space-y-4"></div>
+</section>
+</div>
+
+<!-- Modal Historial -->
+<div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
+  <div class="card max-h-[85vh] w-full max-w-4xl space-y-3 overflow-hidden">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-slate-100">Historial de ejecuciones</h2>
+      <div class="flex gap-2">
+        <button id="btnCsv" class="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400">Descargar CSV</button>
+        <button id="btnClose" class="btn border border-slate-700 hover:bg-slate-800">Cerrar</button>
+      </div>
+    </div>
+    <div class="max-h-[65vh] overflow-auto rounded-lg border border-slate-800">
+      <table class="w-full whitespace-nowrap text-left font-mono text-xs">
+        <thead class="sticky top-0 bg-slate-950 text-slate-400">
+          <tr>
+            <th class="p-2">#</th>
+            <th class="p-2">Fase</th>
+            <th class="p-2">Método</th>
+            <th class="p-2">Campo</th>
+            <th class="p-2">Tiempo (ns)</th>
+            <th class="p-2">Comparaciones</th>
+            <th class="p-2">Movimientos</th>
+            <th class="p-2">Hora</th>
+          </tr>
+        </thead>
+        <tbody id="tbH"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE_URL = window.location.origin;
+const CAMPOS = ["id_estacion","temperatura_promedio","fecha_registro","estado","municipio","humedad_relativa","precipitacion_mm","tipo_cultivo_predominante","presion_atmosferica","velocidad_viento"];
+const NUM = ["id_estacion","temperatura_promedio","fecha_registro","humedad_relativa","precipitacion_mm","presion_atmosferica","velocidad_viento"];
+const TOTAL = 15000;
+const $ = id => document.getElementById(id);
+const st = {cargado:false, ordenadoPor:null, hist:[], cont:{}, p:[], u:[], tab:"p", sorteo:null};
+
+const pick = (o, ...k) => { 
+  if (!o) return undefined;
+  for (const x of k) {
+    if (o[x] !== undefined && o[x] !== null) return o[x];
+  }
+  return undefined;
+};
+
+const fmt = n => (n === undefined || n === null || isNaN(n)) ? "0" : Number(n).toLocaleString("es-MX");
+const ms = ns => (Number(ns) / 1e6).toLocaleString("es-MX", {maximumFractionDigits: 3});
+
+const getClaveNum = campo => {
+  if (campo === "id_estacion") return "1";
+  if (campo === "temperatura_promedio") return "2";
+  if (campo === "fecha_registro") return "3";
+  return "";
+};
+
+async function api(path, method = "GET", body) {
+  const r = await fetch(API_BASE_URL + path, {
+    method, 
+    headers: {"Content-Type": "application/json"}, 
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!r.ok) throw new Error("El servidor respondió HTTP " + r.status);
+  return r.json();
+}
+
+async function run(btn, label, fn) {
+  const txt = btn.textContent; btn.disabled = true;
+  btn.innerHTML = '<span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent align-middle"></span> ' + label;
+  try { 
+    await fn(); 
+  } catch (e) { 
+    alert("No se pudo completar la acción: " + e.message + ". Revisa que FastAPI esté activo en " + API_BASE_URL + "."); 
+  }
+  btn.textContent = txt; 
+  refresh();
+}
+
+async function ping() {
+  const el = $("conn"); 
+  let ok = false;
+  try { ok = (await fetch(API_BASE_URL + "/openapi.json")).ok; } catch (_) {}
+  el.innerHTML = '<span class="h-2 w-2 rounded-full ' + (ok ? "bg-emerald-400" : "bg-red-500") + '"></span>' + (ok ? "Conectado" : "Desconectado");
+  el.className = "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-mono " + (ok ? "border-emerald-500/50 text-emerald-300" : "border-red-500/50 text-red-300");
+}
+ping(); 
+setInterval(ping, 5000);
+
+function refresh() {
+  $("sumReg").textContent = (st.cargado ? fmt(TOTAL) : "0") + " / 15,000";
+  $("sumOrd").textContent = st.ordenadoPor ? "Ordenado por " + st.ordenadoPor : "No ordenado";
+  const e = Object.entries(st.cont), tot = e.reduce((a, x) => a + x[1], 0);
+  if (tot) { 
+    const m = e.sort((a, b) => b[1] - a[1])[0]; 
+    $("sumAlfa").textContent = m[0] + " (" + Math.round(m[1] * 100 / tot) + "%)"; 
+  }
+  ["btn21", "btn31"].forEach(id => { 
+    $(id).disabled = !st.cargado; 
+    $(id).title = st.cargado ? "" : "Primero carga los registros en la Fase 1"; 
+  });
+  $("btn11").disabled = false;
+  renderAlfa(); 
+  renderMuestra();
+}
+
+function renderAlfa() {
+  const e = Object.entries(st.cont); 
+  if (!e.length) return;
+  const max = Math.max(...e.map(x => x[1])) || 1;
+  $("alfa").innerHTML = e.map(([k, v]) => '<div class="flex items-center gap-3"><span class="w-40 shrink-0 font-mono text-slate-300">' + k + '</span><div class="h-3 flex-1 rounded bg-slate-800"><div class="h-3 rounded bg-emerald-500" style="width:' + (v * 100 / max) + '%"></div></div><span class="w-8 text-right font-mono text-amber-400">' + v + '</span></div>').join("");
+}
+
+function renderMuestra() {
+  $("thM").innerHTML = '<tr><th class="p-2">#</th>' + CAMPOS.map(c => '<th class="p-2">' + c + '</th>').join("") + '</tr>';
+  const rows = st[st.tab] || [];
+  const ini = st.tab === "p" ? 1 : TOTAL - rows.length + 1;
+  $("tbM").innerHTML = rows.length ? rows.map((r, i) => '<tr class="border-t border-slate-800 hover:bg-slate-800/50"><td class="p-2 text-amber-400">' + fmt(ini + i) + '</td>' + CAMPOS.map(c => '<td class="p-2">' + (r[c] ?? "") + '</td>').join("") + '</tr>').join("") : '<tr><td class="p-4 text-slate-500" colspan="11">Sin datos. Carga los registros en la Fase 1.</td></tr>';
+}
+
+function setMuestra(res) { 
+  const p = pick(res, "muestra_primeros_30", "primeros_30", "primeros"); 
+  const u = pick(res, "muestra_ultimos_30", "ultimos_30", "ultimos"); 
+  if (Array.isArray(p) && p.length) st.p = p; 
+  if (Array.isArray(u) && u.length) st.u = u; 
+}
+
+document.querySelectorAll(".tab").forEach(b => b.onclick = () => { 
+  st.tab = b.dataset.tab; 
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === b)); 
+  renderMuestra(); 
+});
+
+function log(fase, metodo, campo, ns, c, m) { 
+  st.hist.push({fase, metodo, campo, ns, c, m, hora: new Date().toLocaleTimeString("es-MX")}); 
+}
+
+/* FASE 1: CARGA */
+$("btn11").onclick = () => run($("btn11"), "Cargando", async () => {
+  const r = await api("/api/fase1/cargar", "POST");
+  const ns = pick(r, "tiempo_ns", "nanosegundos") || 0;
+  const est = pick(r, "estructura") || "ArrayList";
+  st.cargado = true; 
+  st.ordenadoPor = null; 
+  setMuestra(r);
+  $("out1").textContent = "Se realizó la carga de los 15,000 registros con sus 10 columnas a la estructura [" + est + "] y le tomó [" + fmt(ns) + "] nanosegundos completar la acción.";
+  log("Carga", est, "-", ns, "-", "-");
+});
+
+/* FASE 2: ORDENACIÓN */
+$("btn21").onclick = () => run($("btn21"), "Sorteando", async () => {
+  const r = await api("/api/fase2/disparador-ordenamiento", "POST");
+  
+  // Extracción flexible de campo
+  let rawCampo = pick(r, "campo_seleccionado", "campo", "campo_clave");
+  let campo = "id_estacion";
+  let clave = "";
+  if (typeof rawCampo === "object" && rawCampo !== null) {
+    campo = rawCampo.nombre || rawCampo.campo || "id_estacion";
+    clave = rawCampo.clave || rawCampo.numero || getClaveNum(campo);
+  } else if (typeof rawCampo === "string") {
+    campo = rawCampo;
+    clave = pick(r, "clave", "numero_clave", "clave_seleccionada") || getClaveNum(campo);
+  }
+
+  // Extracción de método
+  const met = pick(r, "metodo_asignado", "metodo", "metodo_ordenamiento", "algoritmo") || "Radix Sort";
+  const ns = pick(r, "tiempo_ns", "nanosegundos") || 0;
+  const c = pick(r, "comparaciones") ?? 0;
+  const m = pick(r, "movimientos", "asignaciones", "intercambios") ?? 0;
+
+  st.ordenadoPor = campo; 
+  st.cont[met] = (st.cont[met] || 0) + 1; 
+  setMuestra(r);
+
+  $("sel2").classList.remove("hidden");
+  $("sel2").innerHTML = "-> Campo clave seleccionado aleatoriamente: <b>" + campo + "</b> (Clave " + clave + ")<br>-> Método de ordenamiento seleccionado aleatoriamente: <b>" + met + "</b>";
+  
+  $("out2").classList.remove("hidden");
+  $("out2").textContent = "Se ordenaron 15,000 registros por el campo [" + campo + "] usando el método [" + met + "] en [" + fmt(ns) + "] nanosegundos. Comparaciones: [" + fmt(c) + "], Asignaciones/Movimientos de Memoria: [" + fmt(m) + "]";
+  
+  const b = (t, v, s, col) => '<div class="rounded-lg bg-slate-950 p-4"><div class="text-xs text-slate-500">' + t + '</div><div class="font-mono text-2xl ' + col + '">' + v + '</div><div class="text-xs text-slate-500">' + s + '</div></div>';
+  $("badges2").classList.remove("hidden");
+  $("badges2").innerHTML = b("Tiempo", fmt(ns), "nanosegundos", "text-amber-400") + b("Tiempo", ms(ns), "milisegundos", "text-amber-400") + b("Comparaciones", fmt(c), "totales", "text-sky-400") + b("Movimientos", fmt(m), "asignaciones en RAM", "text-emerald-400");
+  
+  log("Ordenación", met, campo, ns, c, m);
+});
+
+/* FASE 3: BÚSQUEDA */
+$("btn31").onclick = () => run($("btn31"), "Sorteando", async () => {
+  const r = await api("/api/fase3/disparador-busqueda");
+  const met = pick(r, "metodo_seleccionado", "metodo", "metodo_busqueda", "algoritmo") || "Búsqueda Binaria";
+  
+  let rawCampo = pick(r, "campo_requerido", "campo_seleccionado", "campo", "campo_clave") || st.ordenadoPor || "id_estacion";
+  let campo = (typeof rawCampo === "object" && rawCampo !== null) ? (rawCampo.nombre || rawCampo.campo || "id_estacion") : rawCampo;
+
+  st.sorteo = {met, campo, bin: /binari/i.test(met)};
+  $("res3").classList.add("hidden");
+
+  const bin = st.sorteo.bin;
+  const listo = st.ordenadoPor === campo;
+
+  let h = '<div class="rounded-lg border border-slate-700 bg-slate-950 p-4 font-mono text-sm">Método sorteado: <b class="text-amber-400">' + met + '</b></div>';
+  if (bin) {
+    h += '<div class="rounded-lg border p-4 text-sm ' + (listo ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-red-500/50 bg-red-500/10 text-red-200") + '">El campo clave requerido para la búsqueda es: <b>' + campo + '</b><br>Estado del campo en memoria: <b>' + (listo ? "YA ORDENADO PREVIAMENTE" : "SIN ORDENAR. Ejecuta primero la Fase 2 hasta que se ordene por este campo.") + '</b></div>';
+    h += '<input id="valor" class="inp" ' + (NUM.includes(campo) ? 'type="number" step="any"' : 'type="text"') + ' placeholder="Valor de ' + campo + '" ' + (listo ? "" : "disabled") + '><div class="text-xs text-slate-500">Campo bloqueado a: ' + campo + '</div>';
+  } else {
+    h += '<select id="campoSel" class="inp">' + CAMPOS.map(c => '<option ' + (c === campo ? "selected" : "") + '>' + c + '</option>').join("") + '</select><input id="valor" class="inp" type="text" placeholder="Dato a buscar">';
+  }
+  h += '<button id="btnBus" class="btn bg-emerald-500 text-slate-950 hover:bg-emerald-400" ' + (bin && !listo ? 'disabled title="La memoria no está ordenada por este campo"' : "") + '>Ejecutar Búsqueda</button>';
+  
+  $("mod3").innerHTML = h; 
+  $("mod3").classList.remove("hidden");
+  $("btnBus").onclick = () => run($("btnBus"), "Buscando", ejecutarBusqueda);
+});
+
+async function ejecutarBusqueda() {
+  const s = st.sorteo;
+  const campo = s.bin ? s.campo : $("campoSel").value;
+  const valor = $("valor").value.trim();
+  
+  if (!valor) { 
+    alert("Escribe el dato que quieres buscar."); 
+    return; 
+  }
+  
+  const r = await api("/api/fase3/ejecutar-busqueda", "POST", {
+    metodo: s.met, 
+    campo, 
+    valor: NUM.includes(campo) ? Number(valor) : valor
+  });
+
+  const ns = pick(r, "tiempo_ns", "nanosegundos") || (r.benchmarking ? r.benchmarking.tiempo_ns : 0);
+  const c = pick(r, "comparaciones") ?? (r.benchmarking ? r.benchmarking.comparaciones : 0);
+  const reg = pick(r, "registro", "fila_encontrada", "datos");
+  const idx = pick(r, "indice_ram", "indice", "fila");
+  const ok = pick(r, "encontrado") ?? !!reg;
+
+  log("Búsqueda", s.met, campo, ns, c, "-");
+
+  let h;
+  if (!ok) {
+    h = '<div class="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-200">El registro con ' + campo + ' = ' + valor + ' no existe. Se revisaron ' + fmt(c) + ' comparaciones en ' + fmt(ns) + ' nanosegundos.</div>';
+  } else {
+    const cult = String(reg.tipo_cultivo_predominante || "");
+    const badge = /aguacate/i.test(cult) ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-400/20 text-amber-300";
+    const row = (k, v) => '<div class="rounded-lg bg-slate-950 p-3"><div class="text-xs text-slate-500">' + k + '</div><div class="font-mono text-slate-100">' + (v ?? "") + '</div></div>';
+    
+    h = '<div class="term">Se realizó la búsqueda en 15,000 registros por el campo [' + campo + '] usando el método de búsqueda [' + s.met + '] en [' + fmt(ns) + '] nanosegundos. Comparaciones: [' + fmt(c) + ']</div>' +
+      '<div class="rounded-xl border border-emerald-500/40 bg-slate-950 p-5"><div class="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 class="font-semibold text-slate-100">Ficha técnica del registro localizado</h3><span class="rounded-full px-3 py-1 text-xs font-semibold ' + badge + '">' + cult + '</span></div><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">' +
+      row("Fila / Índice en RAM", idx !== undefined ? "Fila #" + fmt(idx) : "Fila #1") + 
+      row("id_estacion", reg.id_estacion) + 
+      row("temperatura_promedio", reg.temperatura_promedio + " °C") + 
+      row("fecha_registro (AAAAMMDD)", reg.fecha_registro) +
+      row("estado", reg.estado) + 
+      row("municipio", reg.municipio) + 
+      row("humedad_relativa", reg.humedad_relativa + " %") + 
+      row("precipitacion_mm", reg.precipitacion_mm + " mm") + 
+      row("presion_atmosferica", reg.presion_atmosferica + " hPa") + 
+      row("velocidad_viento", reg.velocidad_viento + " km/h") + 
+      '</div></div>';
+  }
+  $("res3").innerHTML = h; 
+  $("res3").classList.remove("hidden");
+}
+
+/* HISTORIAL Y DESCARGA CSV */
+$("btnHist").onclick = () => {
+  $("tbH").innerHTML = st.hist.length ? st.hist.map((h, i) => '<tr class="border-t border-slate-800"><td class="p-2">' + (i + 1) + '</td><td class="p-2">' + h.fase + '</td><td class="p-2">' + h.metodo + '</td><td class="p-2">' + h.campo + '</td><td class="p-2 text-amber-400">' + (h.ns === "-" ? "-" : fmt(h.ns)) + '</td><td class="p-2">' + (h.c === "-" ? "-" : fmt(h.c)) + '</td><td class="p-2">' + (h.m === "-" ? "-" : fmt(h.m)) + '</td><td class="p-2">' + h.hora + '</td></tr>').join("") : '<tr><td class="p-4 text-slate-500" colspan="8">Aún no hay ejecuciones. Corre alguna fase para registrarla aquí.</td></tr>';
+  $("modal").classList.replace("hidden", "flex");
+};
+
+$("btnClose").onclick = () => $("modal").classList.replace("flex", "hidden");
+
+$("btnCsv").onclick = () => {
+  const csv = "No,Fase,Metodo,Campo,Tiempo_ns,Comparaciones,Movimientos,Hora\n" + st.hist.map((h, i) => [i + 1, h.fase, h.metodo, h.campo, h.ns, h.c, h.m, h.hora].join(",")).join("\n");
+  const a = document.createElement("a"); 
+  a.href = URL.createObjectURL(new Blob([csv], {type: "text/csv"})); 
+  a.download = "historial_ejecuciones.csv"; 
+  a.click();
+};
+
+refresh();
+</script>
+</body>
+</html>
