@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Monitoreo Agroclimático — Maíz y Aguacate</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>
+  :root{--bg:#020617;--card:#0f172a;--border:#1e293b;}
+  body{background:var(--bg);color-scheme:dark;}
+  .card{background:var(--card);border:1px solid var(--border);}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+  ::-webkit-scrollbar{height:8px;width:8px}
+  ::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
+  table{border-collapse:collapse}
+  th,td{padding:4px 8px;white-space:nowrap;font-size:11px}
+  tbody tr:nth-child(even){background:#0b1322}
+</style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8">
+
+<!-- ===== HEADER ===== -->
+<header class="max-w-7xl mx-auto mb-6">
+  <div class="flex flex-wrap justify-between items-start gap-3">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-emerald-400">SISTEMA DE MONITOREO AGROCLIMÁTICO DE CULTIVOS DE MAÍZ Y AGUACATE</h1>
+      <p class="text-sky-400 text-sm mt-1">Sector Primario Agroalimentario y Meteorológico de México · Evaluación de Rendimiento en RAM</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="connBadge" class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 border border-slate-700">⏳ Verificando backend…</span>
+      <button onclick="resetAll()" class="px-3 py-1 rounded-lg text-xs font-semibold bg-rose-900/60 border border-rose-700 hover:bg-rose-800">⛑️ Reiniciar TODO</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+    <div class="card rounded-xl p-4">
+      <p class="text-xs text-slate-400">Registros en RAM</p>
+      <p id="statRegistros" class="text-xl font-bold mono text-amber-400">0 / 15,000</p>
+    </div>
+    <div class="card rounded-xl p-4">
+      <p class="text-xs text-slate-400">Estado del ordenamiento</p>
+      <p id="statOrden" class="text-xl font-bold mono text-sky-400">No ordenado</p>
+    </div>
+    <div class="card rounded-xl p-4">
+      <p class="text-xs text-slate-400">Método Alfa actual</p>
+      <p id="statAlfa" class="text-xl font-bold mono text-emerald-400">—</p>
+    </div>
+  </div>
+  <div id="globalError" class="hidden mt-3 card border-rose-700 rounded-xl p-3 text-rose-300 text-sm flex justify-between items-center">
+    <span id="globalErrorText"></span>
+    <button onclick="document.getElementById('globalError').classList.add('hidden')" class="px-2 py-1 bg-rose-800 rounded">✕</button>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto space-y-6">
+
+<!-- ===== FASE 1 ===== -->
+<section class="card rounded-2xl p-5">
+  <div class="flex justify-between items-center flex-wrap gap-2">
+    <h2 class="text-lg font-bold text-emerald-400">FASE 1 · Infraestructura y Carga de Datos</h2>
+    <div class="flex gap-2">
+      <button id="btnF1" onclick="cargarFase1()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-sm">1.1 Cargar 15,000 Registros a RAM</button>
+      <button onclick="resetFase('f1')" title="Botón de escape: reinicia esta fase si algo falla" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">🔄</button>
+    </div>
+  </div>
+  <div id="f1Spinner" class="hidden mt-3 text-amber-400 text-sm">⏳ Cargando datos en memoria…</div>
+  <div id="f1Error" class="hidden mt-3 card border-rose-700 rounded-xl p-3 text-rose-300 text-xs"></div>
+  <pre id="f1Console" class="mono mt-3 bg-black/60 rounded-xl p-3 text-xs text-emerald-300 min-h-[2.5rem] whitespace-pre-wrap"># Esperando acción…</pre>
+
+  <div id="f1TableWrap" class="hidden mt-4">
+    <div class="flex gap-2 mb-2">
+      <button onclick="showTab('primeros')" id="tabPrimeros" class="px-3 py-1 rounded-lg text-xs bg-emerald-700">Primeros 30 registros</button>
+      <button onclick="showTab('ultimos')" id="tabUltimos" class="px-3 py-1 rounded-lg text-xs bg-slate-800">Últimos 30 registros</button>
+    </div>
+    <div class="overflow-x-auto rounded-xl border border-slate-800">
+      <table class="w-full text-left" id="f1Table"><thead class="bg-slate-800 text-slate-300"></thead><tbody></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FASE 2 ===== -->
+<section class="card rounded-2xl p-5">
+  <div class="flex justify-between items-center flex-wrap gap-2">
+    <h2 class="text-lg font-bold text-sky-400">FASE 2 · Disparador Aleatorio de Ordenación</h2>
+    <div class="flex gap-2">
+      <button id="btnF2" onclick="disparadorFase2()" disabled title="Carga primero los datos en la Fase 1" class="px-4 py-2 rounded-lg bg-sky-700 opacity-50 cursor-not-allowed font-semibold text-sm">2.1 Activar Disparador Aleatorio de Ordenación</button>
+      <button onclick="resetFase('f2')" title="Botón de escape: reinicia esta fase si algo falla" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">🔄</button>
+    </div>
+  </div>
+  <div id="f2Error" class="hidden mt-3 card border-rose-700 rounded-xl p-3 text-rose-300 text-xs"></div>
+
+  <div id="f2Selection" class="hidden mt-3 grid sm:grid-cols-2 gap-3">
+    <div class="card rounded-xl p-3 border-sky-700"><p class="text-xs text-slate-400">Campo clave seleccionado</p><p id="f2Campo" class="text-lg font-bold text-sky-300 mono"></p></div>
+    <div class="card rounded-xl p-3 border-emerald-700"><p class="text-xs text-slate-400">Método de ordenamiento</p><p id="f2Metodo" class="text-lg font-bold text-emerald-300 mono"></p></div>
+  </div>
+
+  <pre id="f2Console" class="mono mt-3 bg-black/60 rounded-xl p-3 text-xs text-sky-300 min-h-[2.5rem] whitespace-pre-wrap hidden"></pre>
+
+  <div id="f2Metrics" class="hidden grid grid-cols-3 gap-3 mt-3">
+    <div class="card rounded-xl p-3 text-center"><p class="text-[10px] text-slate-400">TIEMPO</p><p id="f2Tiempo" class="text-amber-400 font-bold mono text-sm"></p></div>
+    <div class="card rounded-xl p-3 text-center"><p class="text-[10px] text-slate-400">COMPARACIONES</p><p id="f2Comp" class="text-amber-400 font-bold mono text-sm"></p></div>
+    <div class="card rounded-xl p-3 text-center"><p class="text-[10px] text-slate-400">MOVIMIENTOS</p><p id="f2Mov" class="text-amber-400 font-bold mono text-sm"></p></div>
+  </div>
+
+  <div id="f2Alfa" class="hidden mt-4">
+    <p class="text-xs text-slate-400 mb-2">Panel del Método Alfa · ejecuciones acumuladas</p>
+    <div id="f2AlfaBars" class="space-y-1"></div>
+  </div>
+</section>
+
+<!-- ===== FASE 3 ===== -->
+<section class="card rounded-2xl p-5">
+  <div class="flex justify-between items-center flex-wrap gap-2">
+    <h2 class="text-lg font-bold text-amber-400">FASE 3 · Disparador Aleatorio de Búsqueda</h2>
+    <div class="flex gap-2">
+      <button id="btnF3" onclick="disparadorFase3()" disabled title="Carga primero los datos en la Fase 1" class="px-4 py-2 rounded-lg bg-amber-700 opacity-50 cursor-not-allowed font-semibold text-sm">3.1 Activar Disparador Aleatorio de Búsqueda</button>
+      <button onclick="resetFase('f3')" title="Botón de escape: reinicia esta fase si algo falla" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">🔄</button>
+    </div>
+  </div>
+  <div id="f3Error" class="hidden mt-3 card border-rose-700 rounded-xl p-3 text-rose-300 text-xs"></div>
+
+  <div id="f3Modulo" class="hidden mt-3 space-y-3">
+    <div id="f3AlertBinaria" class="hidden card border-amber-700 rounded-xl p-3 text-xs">
+      <p>El campo clave requerido para la búsqueda es: <span id="f3CampoBin" class="font-bold text-amber-300 mono"></span></p>
+      <p id="f3EstadoOrden" class="mt-1"></p>
+    </div>
+    <div class="flex flex-wrap gap-2 items-end">
+      <div id="f3LinealSelect" class="hidden">
+        <label class="text-xs text-slate-400 block mb-1">Campo a buscar</label>
+        <select id="f3Campo" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm"></select>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Valor a buscar</label>
+        <input id="f3Valor" type="text" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm" placeholder="Ingresa el dato…">
+      </div>
+      <button id="btnF3Ejecutar" onclick="ejecutarBusqueda()" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 font-semibold text-sm">Ejecutar Búsqueda</button>
+    </div>
+  </div>
+
+  <pre id="f3Console" class="mono mt-3 bg-black/60 rounded-xl p-3 text-xs text-amber-300 min-h-[2.5rem] whitespace-pre-wrap hidden"></pre>
+  <div id="f3NoEncontrado" class="hidden mt-3 card border-rose-700 rounded-xl p-3 text-rose-300 text-sm"></div>
+
+  <div id="f3Ficha" class="hidden mt-4 card rounded-xl p-4 border-emerald-700">
+    <p class="text-xs text-slate-400 mb-2">Ficha Técnica del Registro Localizado</p>
+    <div id="f3FichaBody" class="grid sm:grid-cols-3 gap-2 text-xs mono"></div>
+  </div>
+</section>
+
+<!-- ===== BITÁCORA ===== -->
+<section class="text-center">
+  <button onclick="toggleBitacora()" class="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-sm">📋 Ver historial / Bitácora de ejecuciones</button>
+</section>
+
+<div id="bitacoraModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+  <div class="card rounded-2xl p-5 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="font-bold text-emerald-400">Historial de Ejecuciones (Bitácora)</h3>
+      <button onclick="toggleBitacora()" class="px-2 py-1 bg-slate-800 rounded">✕</button>
+    </div>
+    <div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-800 text-slate-300"><tr><th>#</th><th>Fase</th><th>Campo</th><th>Método</th><th>Tiempo (ns)</th><th>Comp.</th><th>Mov.</th></tr></thead><tbody id="bitacoraBody"></tbody></table></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const API_BASE_URL = "http://localhost:8000";
+const CAMPOS = ["id_estacion","temperatura_promedio","fecha_registro","estado","municipio","humedad_relativa","precipitacion_mm","tipo_cultivo_predominante","presion_atmosferica","velocidad_viento"];
+
+let state = { cargado:false, ordenado:false, campoOrdenado:null, muestra:{primeros:[],ultimos:[]}, alfa:{}, bitacora:[], campoBusquedaSorteado:null, metodoBusquedaSorteado:null };
+
+// ---------- utilidades de red con manejo de errores (botones de escape) ----------
+async function apiCall(path, opts={}){
+  try{
+    const res = await fetch(API_BASE_URL + path, {headers:{'Content-Type':'application/json'}, ...opts});
+    if(!res.ok) throw new Error(`HTTP ${res.status} en ${path}`);
+    return await res.json();
+  }catch(err){
+    throw new Error("No se pudo conectar con el backend (" + err.message + "). Verifica que FastAPI esté corriendo en " + API_BASE_URL + ".");
+  }
+}
+function showError(boxId, msg){ const el=document.getElementById(boxId); el.textContent="⚠️ "+msg; el.classList.remove('hidden'); }
+function hideError(boxId){ document.getElementById(boxId).classList.add('hidden'); }
+function globalErr(msg){ document.getElementById('globalErrorText').textContent="⚠️ "+msg; document.getElementById('globalError').classList.remove('hidden'); }
+
+async function checkConn(){
+  const b=document.getElementById('connBadge');
+  try{ await apiCall('/health'); b.textContent='🟢 Conectado'; b.className='px-3 py-1 rounded-full text-xs font-semibold bg-emerald-900/60 border border-emerald-600 text-emerald-300'; }
+  catch(e){ b.textContent='🔴 Desconectado'; b.className='px-3 py-1 rounded-full text-xs font-semibold bg-rose-900/60 border border-rose-600 text-rose-300'; }
+}
+checkConn(); setInterval(checkConn, 15000);
+
+// ---------- botones de escape / reinicio ----------
+function resetAll(){
+  state = { cargado:false, ordenado:false, campoOrdenado:null, muestra:{primeros:[],ultimos:[]}, alfa:{}, bitacora:[], campoBusquedaSorteado:null, metodoBusquedaSorteado:null };
+  ['f1','f2','f3'].forEach(resetFase);
+  document.getElementById('statRegistros').textContent='0 / 15,000';
+  document.getElementById('statOrden').textContent='No ordenado';
+  document.getElementById('statAlfa').textContent='—';
+  document.getElementById('globalError').classList.add('hidden');
+}
+function resetFase(f){
+  hideError(f+'Error');
+  if(f==='f1'){
+    document.getElementById('f1Spinner').classList.add('hidden');
+    document.getElementById('f1Console').textContent='# Esperando acción…';
+    document.getElementById('f1TableWrap').classList.add('hidden');
+  }
+  if(f==='f2'){
+    document.getElementById('f2Selection').classList.add('hidden');
+    document.getElementById('f2Console').classList.add('hidden');
+    document.getElementById('f2Metrics').classList.add('hidden');
+    document.getElementById('f2Alfa').classList.add('hidden');
+  }
+  if(f==='f3'){
+    document.getElementById('f3Modulo').classList.add('hidden');
+    document.getElementById('f3Console').classList.add('hidden');
+    document.getElementById('f3NoEncontrado').classList.add('hidden');
+    document.getElementById('f3Ficha').classList.add('hidden');
+  }
+}
+
+function fmtTiempo(ns){ return `${ns.toLocaleString()} ns (${(ns/1e6).toFixed(3)} ms)`; }
+function setBotonesHabilitados(){
+  const b2=document.getElementById('btnF2'), b3=document.getElementById('btnF3');
+  [b2,b3].forEach(b=>{
+    b.disabled = !state.cargado;
+    b.title = state.cargado ? '' : 'Carga primero los datos en la Fase 1';
+    b.classList.toggle('opacity-50', !state.cargado);
+    b.classList.toggle('cursor-not-allowed', !state.cargado);
+  });
+}
+
+// ---------- FASE 1 ----------
+async function cargarFase1(){
+  hideError('f1Error');
+  document.getElementById('f1Spinner').classList.remove('hidden');
+  document.getElementById('btnF1').disabled = true;
+  try{
+    const data = await apiCall('/api/fase1/cargar', {method:'POST'});
+    state.cargado = true;
+    state.muestra.primeros = data.primeros_30 || [];
+    state.muestra.ultimos = data.ultimos_30 || [];
+    document.getElementById('f1Console').textContent =
+      `Se realizó la carga de los 15,000 registros con sus 10 columnas a la estructura ${data.estructura || 'ArrayList/Lista de Objetos'} y le tomó ${data.tiempo_ns?.toLocaleString() || '?'} nanosegundos completar la acción.`;
+    document.getElementById('statRegistros').textContent = `${(data.total||15000).toLocaleString()} / 15,000`;
+    renderTabla('primeros');
+    document.getElementById('f1TableWrap').classList.remove('hidden');
+    setBotonesHabilitados();
+  }catch(err){
+    showError('f1Error', err.message + " — usa el botón 🔄 para reintentar esta fase.");
+    globalErr("Falló la carga de datos en Fase 1.");
+  }finally{
+    document.getElementById('f1Spinner').classList.add('hidden');
+    document.getElementById('btnF1').disabled = false;
+  }
+}
+function renderTabla(which){
+  const rows = state.muestra[which] || [];
+  const thead = document.querySelector('#f1Table thead');
+  const tbody = document.querySelector('#f1Table tbody');
+  thead.innerHTML = '<tr>' + CAMPOS.map(c=>`<th>${c}</th>`).join('') + '</tr>';
+  tbody.innerHTML = rows.length ? rows.map(r=>'<tr>'+CAMPOS.map(c=>`<td>${r[c]??'—'}</td>`).join('')+'</tr>').join('')
+    : `<tr><td colspan="${CAMPOS.length}" class="text-center text-slate-500 py-3">Sin datos — verifica la conexión con el backend</td></tr>`;
+  document.getElementById('tabPrimeros').className = which==='primeros' ? 'px-3 py-1 rounded-lg text-xs bg-emerald-700' : 'px-3 py-1 rounded-lg text-xs bg-slate-800';
+  document.getElementById('tabUltimos').className = which==='ultimos' ? 'px-3 py-1 rounded-lg text-xs bg-emerald-700' : 'px-3 py-1 rounded-lg text-xs bg-slate-800';
+}
+function showTab(which){ renderTabla(which); }
+
+// ---------- FASE 2 ----------
+async function disparadorFase2(){
+  if(!state.cargado){ showError('f2Error','Debes cargar los datos en la Fase 1 primero.'); return; }
+  hideError('f2Error');
+  try{
+    const data = await apiCall('/api/fase2/disparador-ordenamiento', {method:'POST'});
+    document.getElementById('f2Campo').textContent = `${data.campo} (Clave ${data.clave_index ?? '?'})`;
+    document.getElementById('f2Metodo').textContent = data.metodo;
+    document.getElementById('f2Selection').classList.remove('hidden');
+
+    const c = document.getElementById('f2Console');
+    c.textContent = `Se ordenaron 15,000 registros por el campo ${data.campo} usando el método ${data.metodo} en ${data.tiempo_ns?.toLocaleString()} nanosegundos. Comparaciones: ${data.comparaciones?.toLocaleString()}, Asignaciones/Movimientos de Memoria: ${data.movimientos?.toLocaleString()}`;
+    c.classList.remove('hidden');
+
+    document.getElementById('f2Tiempo').textContent = fmtTiempo(data.tiempo_ns||0);
+    document.getElementById('f2Comp').textContent = (data.comparaciones||0).toLocaleString();
+    document.getElementById('f2Mov').textContent = (data.movimientos||0).toLocaleString();
+    document.getElementById('f2Metrics').classList.remove('hidden');
+
+    state.ordenado = true; state.campoOrdenado = data.campo;
+    document.getElementById('statOrden').textContent = `Ordenado por: ${data.campo}`;
+
+    state.alfa[data.metodo] = (state.alfa[data.metodo]||0) + 1;
+    renderAlfa();
+
+    if(data.primeros_30){ state.muestra.primeros = data.primeros_30; state.muestra.ultimos = data.ultimos_30; renderTabla('primeros'); }
+
+    state.bitacora.push({fase:'2 · Ordenación', campo:data.campo, metodo:data.metodo, t:data.tiempo_ns, c:data.comparaciones, m:data.movimientos});
+  }catch(err){
+    showError('f2Error', err.message + " — usa el botón 🔄 para reintentar esta fase.");
+    globalErr("Falló el disparador de ordenación en Fase 2.");
+  }
+}
+function renderAlfa(){
+  const entries = Object.entries(state.alfa).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) return;
+  const total = entries.reduce((s,[,v])=>s+v,0);
+  const top = entries[0];
+  document.getElementById('statAlfa').textContent = `${top[0]} (${Math.round(top[1]/total*100)}%)`;
+  const max = top[1];
+  document.getElementById('f2AlfaBars').innerHTML = entries.map(([m,v])=>`
+    <div class="text-xs">
+      <div class="flex justify-between mb-0.5"><span class="mono">${m}</span><span class="mono text-emerald-400">${v}</span></div>
+      <div class="h-2 bg-slate-800 rounded"><div class="h-2 bg-emerald-600 rounded" style="width:${(v/max*100)}%"></div></div>
+    </div>`).join('');
+  document.getElementById('f2Alfa').classList.remove('hidden');
+}
+
+// ---------- FASE 3 ----------
+async function disparadorFase3(){
+  if(!state.cargado){ showError('f3Error','Debes cargar los datos en la Fase 1 primero.'); return; }
+  hideError('f3Error');
+  try{
+    const data = await apiCall('/api/fase3/disparador-busqueda');
+    state.campoBusquedaSorteado = data.campo;
+    state.metodoBusquedaSorteado = data.metodo;
+    document.getElementById('f3Modulo').classList.remove('hidden');
+    document.getElementById('f3NoEncontrado').classList.add('hidden');
+    document.getElementById('f3Ficha').classList.add('hidden');
+
+    const esBinaria = /binaria/i.test(data.metodo);
+    document.getElementById('f3AlertBinaria').classList.toggle('hidden', !esBinaria);
+    document.getElementById('f3LinealSelect').classList.toggle('hidden', esBinaria);
+
+    if(esBinaria){
+      document.getElementById('f3CampoBin').textContent = data.campo;
+      const ordenadoOk = state.ordenado && state.campoOrdenado === data.campo;
+      const estadoEl = document.getElementById('f3EstadoOrden');
+      if(ordenadoOk){
+        estadoEl.innerHTML = '<span class="text-emerald-400">Estado del campo en memoria: YA ORDENADO PREVIAMENTE ✅</span>';
+        document.getElementById('btnF3Ejecutar').disabled = false;
+      } else {
+        estadoEl.innerHTML = '<span class="text-rose-400">⚠️ Este campo aún no ha sido ordenado. Ejecuta la Fase 2 con este campo antes de usar Búsqueda Binaria.</span>';
+        document.getElementById('btnF3Ejecutar').disabled = true;
+      }
+    } else {
+      document.getElementById('btnF3Ejecutar').disabled = false;
+      const sel = document.getElementById('f3Campo');
+      sel.innerHTML = CAMPOS.map(c=>`<option value="${c}" ${c===data.campo?'selected':''}>${c}</option>`).join('');
+    }
+    document.getElementById('f3Valor').value = '';
+  }catch(err){
+    showError('f3Error', err.message + " — usa el botón 🔄 para reintentar esta fase.");
+    globalErr("Falló el disparador de búsqueda en Fase 3.");
+  }
+}
+
+async function ejecutarBusqueda(){
+  hideError('f3Error');
+  const esBinaria = /binaria/i.test(state.metodoBusquedaSorteado || '');
+  const campo = esBinaria ? state.campoBusquedaSorteado : document.getElementById('f3Campo').value;
+  const valor = document.getElementById('f3Valor').value.trim();
+  if(!valor){ showError('f3Error','Ingresa un valor a buscar.'); return; }
+  try{
+    const data = await apiCall('/api/fase3/ejecutar-busqueda', {method:'POST', body: JSON.stringify({campo, valor, metodo: state.metodoBusquedaSorteado})});
+    const c = document.getElementById('f3Console');
+    c.textContent = `Se realizó la búsqueda en 15,000 registros por el campo ${campo} usando el método de búsqueda ${state.metodoBusquedaSorteado} en ${data.tiempo_ns?.toLocaleString()} nanosegundos. Comparaciones: ${data.comparaciones?.toLocaleString()}`;
+    c.classList.remove('hidden');
+
+    if(data.encontrado && data.registro){
+      const r = data.registro;
+      document.getElementById('f3FichaBody').innerHTML = `
+        <div>Fila/Índice: <span class="text-emerald-400">${data.indice ?? '—'}</span></div>
+        <div>id_estacion: <span class="text-emerald-400">${r.id_estacion ?? '—'}</span></div>
+        <div>temperatura_promedio: <span class="text-emerald-400">${r.temperatura_promedio ?? '—'} °C</span></div>
+        <div>fecha_registro: <span class="text-emerald-400">${r.fecha_registro ?? '—'}</span></div>
+        <div>estado: <span class="text-emerald-400">${r.estado ?? '—'}</span></div>
+        <div>municipio: <span class="text-emerald-400">${r.municipio ?? '—'}</span></div>
+        <div>tipo_cultivo_predominante: <span class="px-2 py-0.5 rounded bg-emerald-900/60 border border-emerald-600 text-emerald-300">${r.tipo_cultivo_predominante ?? '—'}</span></div>
+        <div>humedad_relativa: <span class="text-emerald-400">${r.humedad_relativa ?? '—'}</span></div>
+        <div>precipitacion_mm: <span class="text-emerald-400">${r.precipitacion_mm ?? '—'}</span></div>
+        <div>presion_atmosferica: <span class="text-emerald-400">${r.presion_atmosferica ?? '—'}</span></div>
+        <div>velocidad_viento: <span class="text-emerald-400">${r.velocidad_viento ?? '—'}</span></div>`;
+      document.getElementById('f3Ficha').classList.remove('hidden');
+      document.getElementById('f3NoEncontrado').classList.add('hidden');
+    } else {
+      document.getElementById('f3NoEncontrado').textContent = `⚠️ El registro no existe tras ${data.comparaciones?.toLocaleString()} comparaciones en ${data.tiempo_ns?.toLocaleString()} nanosegundos.`;
+      document.getElementById('f3NoEncontrado').classList.remove('hidden');
+      document.getElementById('f3Ficha').classList.add('hidden');
+    }
+    state.bitacora.push({fase:'3 · Búsqueda', campo, metodo:state.metodoBusquedaSorteado, t:data.tiempo_ns, c:data.comparaciones, m:'—'});
+  }catch(err){
+    showError('f3Error', err.message + " — usa el botón 🔄 para reintentar esta fase.");
+    globalErr("Falló la ejecución de búsqueda en Fase 3.");
+  }
+}
+
+// ---------- bitácora ----------
+function toggleBitacora(){
+  const m = document.getElementById('bitacoraModal');
+  if(m.classList.contains('hidden')){
+    document.getElementById('bitacoraBody').innerHTML = state.bitacora.length
+      ? state.bitacora.map((b,i)=>`<tr><td>${i+1}</td><td>${b.fase}</td><td>${b.campo}</td><td>${b.metodo}</td><td>${(b.t||0).toLocaleString()}</td><td>${(b.c||0).toLocaleString?.()||b.c}</td><td>${b.m}</td></tr>`).join('')
+      : `<tr><td colspan="7" class="text-center text-slate-500 py-3">Sin ejecuciones registradas aún</td></tr>`;
+  }
+  m.classList.toggle('hidden');
+}
+
+// captura global de errores inesperados (último botón de escape)
+window.addEventListener('error', e=>{ globalErr('Error inesperado en la interfaz: ' + e.message + '. Usa "Reiniciar TODO" si la pantalla se queda atascada.'); });
+window.addEventListener('unhandledrejection', e=>{ globalErr('Error inesperado de red: ' + (e.reason?.message||e.reason) + '. Usa "Reiniciar TODO" si la pantalla se queda atascada.'); });
+</script>
+</body>
+</html>
