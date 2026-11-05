@@ -80,12 +80,14 @@ estado = EstadoRAM()
 
 
 def castear_valor(campo, valor):
-    """Convierte el valor recibido por JSON al tipo nativo del campo para que
-    las comparaciones (==, <, >) sean correctas."""
-    if campo in CAMPOS_ENTEROS:
-        return int(valor)
-    if campo in CAMPOS_FLOTANTES:
-        return float(valor)
+    """Convierte el valor recibido por JSON al tipo nativo de forma segura."""
+    try:
+        if campo in CAMPOS_ENTEROS:
+            return int(valor)
+        if campo in CAMPOS_FLOTANTES:
+            return float(valor)
+    except (ValueError, TypeError):
+        raise ValueError(f"El valor '{valor}' no es válido para el campo numérico '{campo}'.")
     return str(valor)
 
 
@@ -180,8 +182,8 @@ def ejecutar_busqueda(metodo, campo, valor):
                 f"La Búsqueda Binaria fue rechazada."
             )
         idx, comparaciones, tiempo_ns = binary_search(estado.registros, campo, valor_casteado)
-    elif metodo == "Búsqueda Lineal":
-        idx, comparaciones, tiempo_ns = linear_search(estado.registros, campo, valor_casteado)
+    elif metodo in ("Búsqueda Lineal", "Búsqueda Secuencial"):
+     idx, comparaciones, tiempo_ns = linear_search(estado.registros, campo, valor_casteado)
     else:
         raise ValueError(f"Método de búsqueda no reconocido: '{metodo}'")
 
