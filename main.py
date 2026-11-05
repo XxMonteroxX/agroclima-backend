@@ -141,32 +141,24 @@ def disparador_busqueda():
     metodo = random.choice(["Búsqueda Binaria", "Búsqueda Lineal"])
 
     if metodo == "Búsqueda Binaria":
-        if estado.campo_actualmente_ordenado is None:
-            return {
-                "metodo_seleccionado": metodo,
-                "metodo": metodo,
-                "alerta_seguridad": True,
-                "campo_requerido": None,
-                "campo": None,
-                "mensaje": (
-                    "ALERTA DE SEGURIDAD: la memoria RAM no está ordenada por ningún "
-                    "campo todavía. La Búsqueda Binaria requiere ejecutar primero "
-                    "/api/fase2/disparador-ordenamiento."
-                ),
-            }
+        campo_ordenado = estado.campo_actualmente_ordenado or "id_estacion"
         return {
             "metodo_seleccionado": metodo,
             "metodo": metodo,
             "alerta_seguridad": False,
-            "campo_requerido": estado.campo_actualmente_ordenado,
-            "campo": estado.campo_actualmente_ordenado,
-            "mensaje": (
-                f"Solicite al usuario el valor a buscar para el campo obligatorio "
-                f"'{estado.campo_actualmente_ordenado}' (único campo actualmente "
-                f"ordenado en RAM)."
-            ),
+            "campo_requerido": campo_ordenado,
+            "campo": campo_ordenado,
+            "mensaje": f"Se realizará Búsqueda Binaria sobre el campo previamente ordenado: '{campo_ordenado}'.",
         }
 
+    return {
+        "metodo_seleccionado": "Búsqueda Lineal",
+        "metodo": "Búsqueda Lineal",
+        "alerta_seguridad": False,
+        "campo": random.choice(CAMPOS),
+        "campos_disponibles": CAMPOS,
+        "mensaje": "Elija cualquier campo y el valor a buscar.",
+    }
     return {
         "metodo_seleccionado": metodo,
         "metodo": metodo,
@@ -192,11 +184,11 @@ def ejecutar_busqueda(payload: BusquedaPayload):
             detail=f"Campo '{payload.campo}' no válido. Campos disponibles: {CAMPOS}",
         )
 
-    if payload.metodo not in ("Búsqueda Binaria", "Búsqueda Lineal"):
-        raise HTTPException(
-            status_code=422,
-            detail="Método inválido. Use 'Búsqueda Binaria' o 'Búsqueda Lineal'.",
-        )
+    if payload.metodo not in ("Búsqueda Binaria", "Búsqueda Lineal", "Búsqueda Secuencial"):
+     raise HTTPException(
+        status_code=422,
+        detail="Método inválido. Use 'Búsqueda Binaria' o 'Búsqueda Lineal / Secuencial'.",
+    )
 
     try:
         encontrado, idx, registro, comparaciones, tiempo_ns = storage.ejecutar_busqueda(
